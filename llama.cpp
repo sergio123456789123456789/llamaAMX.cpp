@@ -1697,6 +1697,8 @@ struct llama_state {
     llama_state() {
 #ifdef GGML_USE_METAL
         ggml_backend_metal_log_set_callback(log_callback, log_callback_user_data);
+#elif defined(GGML_USE_CUDA)
+        ggml_backend_cuda_log_set_callback(log_callback, log_callback_user_data);
 #endif
     }
 
@@ -4461,6 +4463,9 @@ static void llm_load_vocab(
             } else if (
                 tokenizer_pre == "qwen2") {
                 vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_QWEN2;
+            } else if (
+                tokenizer_pre == "stablelm2") {
+                vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_STABLELM2;
             } else if (
                 tokenizer_pre == "olmo") {
                 vocab.type_pre = LLAMA_VOCAB_PRE_TYPE_OLMO;
@@ -12361,6 +12366,7 @@ struct llm_tokenizer_bpe {
                             "'s|'t|'re|'ve|'m|'ll|'d| ?\\p{L}+| ?\\p{N}+| ?[^\\s\\p{L}\\p{N}]+|\\s+(?!\\S)",
                         });
                         break;
+                    case LLAMA_VOCAB_PRE_TYPE_STABLELM2:
                     case LLAMA_VOCAB_PRE_TYPE_QWEN2:
                         word_collection = unicode_regex_split(text, {
                             // original regex from tokenizer.json
@@ -18174,6 +18180,8 @@ void llama_log_set(ggml_log_callback log_callback, void * user_data) {
     g_state.log_callback_user_data = user_data;
 #ifdef GGML_USE_METAL
     ggml_backend_metal_log_set_callback(g_state.log_callback, g_state.log_callback_user_data);
+#elif defined(GGML_USE_CUDA)
+    ggml_backend_cuda_log_set_callback(g_state.log_callback, g_state.log_callback_user_data);
 #endif
 }
 
