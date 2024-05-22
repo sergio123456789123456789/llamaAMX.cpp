@@ -10,7 +10,7 @@
 #elif !defined(__FreeBSD__) && !defined(__NetBSD__) && !defined(__OpenBSD__)
 #include <alloca.h>
 #endif
-
+#include <immintrin.h>
 #include <assert.h>
 #include <errno.h>
 #include <time.h>
@@ -1579,7 +1579,9 @@ static bool set_tiledata_use()
       return false;
    }
    else
-   {
+   {  
+      
+      #define AMX_AVAILABLE
       return true;
    }
 
@@ -1938,52 +1940,58 @@ static void ggml_vec_dot_bf16(int n, float * restrict s, size_t bs, ggml_bf16_t 
     UNUSED(bs);
     int i = 0;
     ggml_float sumf = 0;
-#if (set_tiledata_use)
-    printf("\n TILE DATA USE SET - OK \n\n");
+    set_tiledata_use();
+#if defined (AMX_AVAILABLE)
+    //printf("\n TILE DATA USE SET - OK \n\n");
     //Initialization should be changed to only done one time per process
     __tilecfg tilecfg = {0};
     tilecfg.palette_id = 1;
     tilecfg.start_row = 0;
-    tilecfg.colsb[0] = ;
+    tilecfg.colsb[0] = 16;
+    tilecfg.rows[0] = 16;
     for (int m = 1; m < 4; m++)
     {
-        tilecfg.colsb[i] = 64;
-        tilecfg.rows[i] = 16;
+        tilecfg.colsb[m] = 64;
+        tilecfg.rows[m] = 16;
     }
-    _tile_loadconfig (&tilecfg);
+    //printf("%d ", i);
+    //_tile_loadconfig (&tilecfg);
     float res[256];
     ggml_bf16_t trans[512];
+    
     __m512 zero = _mm512_setzero_ps();
     for (int m = 0; m < 16; m++)
     {
         _mm512_store_ps(&res[m*16], zero);
 
     }
-    for 
+     
     int elements = 512;
     for (; i + elements <= n; i+=elements) {
+	int start = i * elements;
         //We tranpose it to do the multiplication as we want
         for (int m = 0; m < 16; m++) {
             for (int j = 0; j < 16; j++)
             {
-                memcpy(&trans[i*2+32*j], &y[j*2+32*i+start], sizeof(ggml_bf16_t)*2);
+                memcpy(&trans[m*2+32*j], &y[j*2+32*m+start], sizeof(ggml_bf16_t)*2);
             }
         }
-
-        // Load tile rows from memory
-        _tile_loadd (2, &src16[start], STRIDE);
-        _tile_loadd (3, trans, STRIDE);
+        
+        //Load tile rows from memory
+        _tile_loadd (2, &x[start], 64);
+        _tile_loadd (3, trans, 64);
         if (i == 0) { //We only need to load the res once
-            _tile_loadd (1, res, STRIDE);
+            //_tile_loadd (1, res, 64);
         }
         // Compute dot-product of bytes in tiles 
         _tile_dpbf16ps (1, 2, 3);
     }
     // Store the tile data to memory
-   _tile_stored (1, res, STRIDE);
+    _tile_stored (1, res, 64);
     for (int m = 0; m < 16; m++) {
-        sumf += res[m+m*16];
+        sumf += (ggml_float)res[m+m*16];
     }
+    _tile_release();
 #elif defined(__AVX512BF16__)
     __m512 c1 = _mm512_setzero_ps();
     __m512 c2 = _mm512_setzero_ps();
