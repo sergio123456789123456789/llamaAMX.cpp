@@ -2144,20 +2144,20 @@ static void ggml_vec_dot_bf16(int n, float * restrict s, size_t bs, ggml_bf16_t 
         tilecfg.rows[m] = 16;
     }
     //printf("%d ", i);
-    //_tile_loadconfig (&tilecfg);
+    _tile_loadconfig (&tilecfg);
     float res[256];
     ggml_bf16_t trans[512];
     
     __m512 zero = _mm512_setzero_ps();
     for (int m = 0; m < 16; m++)
     {
-        _mm512_store_ps(&res[m*16], zero);
+        _mm512_storeu_ps(&res[m*16], zero);
 
     }
      
     int elements = 512;
     for (; i + elements <= n; i+=elements) {
-	int start = i * elements;
+	    int start = i * elements;
         //We tranpose it to do the multiplication as we want
         for (int m = 0; m < 16; m++) {
             for (int j = 0; j < 16; j++)
