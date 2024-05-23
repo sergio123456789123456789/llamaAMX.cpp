@@ -2157,20 +2157,20 @@ static void ggml_vec_dot_bf16(int n, float * restrict s, size_t bs, ggml_bf16_t 
      
     int elements = 512;
     for (; i + elements <= n; i+=elements) {
-	    int start = i * elements;
+
         //We tranpose it to do the multiplication as we want
         for (int m = 0; m < 16; m++) {
             for (int j = 0; j < 16; j++)
             {
-                memcpy(&trans[m*2+32*j], &y[j*2+32*m+start], sizeof(ggml_bf16_t)*2);
+                memcpy(&trans[m*2+32*j], &y[j*2+32*m+i], sizeof(ggml_bf16_t)*2);
             }
         }
         
         //Load tile rows from memory
-        _tile_loadd (2, &x[start], 64);
+        _tile_loadd (2, &x[i], 64);
         _tile_loadd (3, trans, 64);
         if (i == 0) { //We only need to load the res once
-            //_tile_loadd (1, res, 64);
+            _tile_loadd (1, res, 64);
         }
         // Compute dot-product of bytes in tiles 
         _tile_dpbf16ps (1, 2, 3);
